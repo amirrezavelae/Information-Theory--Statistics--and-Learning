@@ -1,0 +1,707 @@
+\documentclass{beamer}
+
+% Choose an aesthetic theme
+\usetheme{Madrid}
+% \usecolortheme{seagull} % Uncomment if you prefer to use the seagull color theme
+\usefonttheme{serif}
+
+% Packages for mathematical symbols and environments
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{colortbl} % For row coloring
+% Packages for algorithms
+\usepackage{algorithm}
+\usepackage{algpseudocode} % Using algpseudocode for better flexibility
+
+% Packages for figures
+\usepackage{graphicx}
+\usepackage{booktabs} % For better table formatting, if needed
+\usepackage{caption}  % For customizing captions
+
+% Title and Author Information
+\title{Generalized Linear Contextual Bandits}
+\subtitle{Information Theory, Statistics, and Learning Course Project}
+\author{Amirreza Velae \\ Amirabbas Afzali}
+\institute{Sharif University of Technology}
+\date{\today}
+
+\begin{document}
+
+% Slide 1: Title Slide
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% Slide 2: Outline
+\begin{frame}{Outline}
+    \tableofcontents
+\end{frame}
+\section{Introduction and Background}
+
+\begin{frame}{Real-Life Bandit Algorithm Use Case: Online Ad Placement}
+  \begin{columns}
+    \begin{column}{0.6\textwidth}
+      \begin{itemize}
+        \item \textbf{Context}: E-commerce platforms aim to maximize click-through rate (CTR).
+        \item \textbf{Solution}: Use Multi-Armed Bandit (MAB) algorithms like \textit{Thompson Sampling} to balance exploration and exploitation.
+        \item \textbf{Impact}: Achieve rapid adaptation and 5–10\% CTR uplift within hours.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.4\textwidth}
+      \begin{figure}
+        \centering
+        % Place your image here:
+        \includegraphics[width=\textwidth]{images/multi_armed_bandit.png}
+        \caption{CTR comparison: MAB vs. A/B test over time}
+      \end{figure}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\subsection{Online Learning}
+\subsubsection{A Gentle Introduction to Online Learning}
+\begin{frame}{Introduction to Online Learning}
+  \textbf{Definition:} Online optimization (Learning) involves making a sequence of decisions based on incoming data, where each decision is made without knowledge of future data. \\
+  \textbf{Foundamental Assumption:}
+  \begin{enumerate}
+    \item \textbf{Bunded Losses:} The losses determined by an adversary should not be allowed to be unbounded.
+    \item \textbf{Bounded Decision Set:}  The decision set must be somehow bounded and/or structured, though not necessarily finite.
+  \end{enumerate}
+\end{frame}
+
+\subsubsection{Expert Advice}
+\begin{frame}{Expert Advice: Framework at a Glance}
+  \begin{columns}
+    \begin{column}{0.6\textwidth}
+      \begin{itemize}
+        \item Learner sequentially aggregates expert predictions to minimize regret versus the best expert in hindsight.
+        \item \textbf{Experts}: Provide predictions each round.
+        \item \textbf{Learner}: Assigns weights and combines expert advice.
+        \item \textbf{Feedback}: Observed outcomes update expert weights.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.4\textwidth}
+      \begin{figure}
+        \centering
+        \includegraphics[width=\textwidth]{images/Expert Advise.png}
+        \caption{Expert Advice Framework}
+      \end{figure}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+
+\begin{frame}{Family Members as Experts: An Example}
+  \begin{itemize}
+    \item Main character decides whether to take an umbrella each day.
+    \item Three family members act as \textbf{experts} providing daily weather predictions, the father, mother, and brother.
+  \end{itemize}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.4\linewidth]{images/openart-image_7K5I2JtA_1735594988581_raw.jpg}
+    \caption{Family Members as Experts}
+  \end{figure}
+\end{frame}
+
+
+
+% \begin{frame}{Example Scenario}
+%     \begin{table}[ht]
+%         \centering
+%         \caption{Daily Weather Predictions and Outcomes}
+%         \begin{tabular}{|c|c|c|c|c|}
+%             \hline
+%             \textbf{Day}            & \textbf{Father}  & \textbf{Mother}  & \textbf{Brother} & \textbf{Actual Weather} \\
+%             \hline
+%             \only<1->{1             & \texttt{No Rain} & \texttt{No Rain} & \texttt{Rain}    & \texttt{?}              \\ \hline}
+%             \only<2->{2             & \texttt{Rain}    & \texttt{No Rain} & \texttt{Rain}    & \texttt{?}              \\ \hline}
+%             \only<3->{3             & \texttt{Rain}    & \texttt{No Rain} & \texttt{No Rain} & \texttt{?}              \\ \hline}
+%             \only<4->{4             & \texttt{No Rain} & \texttt{Rain}    & \texttt{No Rain} & \texttt{?}              \\ \hline}
+%             \only<5->{5             & \texttt{Rain}    & \texttt{No Rain} & \texttt{No Rain} & \texttt{?}              \\ \hline}
+%             \only<6->{\textbf{Cost} & 2                & 4                & 3                & -                       \\ \hline}
+%         \end{tabular}
+%     \end{table}
+
+%     \only<1>{\textbf{Day 1 Actual Weather:} \texttt{Rain}}
+%     \only<2>{\textbf{Day 2 Actual Weather:} \texttt{No Rain}}
+%     \only<3>{\textbf{Day 3 Actual Weather:} \texttt{Rain}}
+%     \only<4>{\textbf{Day 4 Actual Weather:} \texttt{No Rain}}
+%     \only<5>{\textbf{Day 5 Actual Weather:} \texttt{Rain}}
+% \end{frame}
+
+
+\begin{frame}{Example Scenario}
+  \begin{table}[ht]
+    \centering
+    \caption{Daily Weather Predictions and Outcomes}
+    \begin{tabular}{|c|c|c|c|c|}
+      \hline
+      \textbf{Day}            & \textbf{Father}  & \textbf{Mother}  & \textbf{Brother} & \textbf{Actual Weather}                \\
+      \hline
+      \only<1->{1             & \texttt{No Rain} & \texttt{No Rain} & \texttt{Rain}    & \only<1>{?}\only<2->{\texttt{Rain}}    \\ \hline}
+      \only<2->{2             & \texttt{Rain}    & \texttt{No Rain} & \texttt{No Rain} & \only<2>{?}\only<3->{\texttt{No Rain}} \\ \hline}
+      \only<3->{3             & \texttt{Rain}    & \texttt{Rain}    & \texttt{No Rain} & \only<3>{?}\only<4->{\texttt{Rain}}    \\ \hline}
+      \only<4->{4             & \texttt{No Rain} & \texttt{Rain}    & \texttt{Rain}    & \only<4>{?}\only<5->{\texttt{No Rain}} \\ \hline}
+      \only<5->{5             & \texttt{Rain}    & \texttt{No Rain} & \texttt{No Rain} & \only<5>{?}\only<6->{\texttt{Rain}}    \\ \hline}
+      \only<6->{\textbf{Cost} & 2                & 3                & 3                & -                                      \\ \hline}
+    \end{tabular}
+  \end{table}
+\end{frame}
+
+
+% % Slide 1: Weighted Majority Algorithm
+% \begin{frame}{Weighted Majority Algorithm}
+%     \begin{itemize}
+%         \item \textbf{Mechanism:}
+%               \begin{itemize}
+%                   \item Assigns a weight to each expert based on their past performance.
+%                   \item Aggregates predictions by considering these weights.
+%                   \item Updates weights multiplicatively based on the correctness of experts' predictions.
+%               \end{itemize}
+%         \item \textbf{Applications:}
+%               \begin{itemize}
+%                   \item Ensemble learning in machine learning.
+%                   \item Financial decision-making.
+%               \end{itemize}
+%     \end{itemize}
+% \end{frame}
+
+% Slide 2: How Weighted Majority Works
+\begin{frame}{Weighted Majority Algorithm}
+  \textbf{Algorithm Steps:}
+  \begin{enumerate}
+    \item \textbf{Initialization:} Assign equal weights to all experts.
+    \item \textbf{Prediction}
+          \[
+            \text{Prediction} = \text{sign}\left(\sum_{i=1}^{N} w_t(i) \cdot \text{Prediction}_t(i)\right)
+          \]
+    \item \textbf{Update Weights:} After observing the outcome, update weights:
+          \[
+            w_{t+1}(i) =
+            \begin{cases}
+              w_t(i)                   & \text{if expert } i \text{ was correct}   \\
+              w_t(i) \cdot \varepsilon & \text{if expert } i \text{ was incorrect}
+            \end{cases}
+          \]
+    \item \textbf{Iteration:} Repeat the prediction and update steps for each round.
+  \end{enumerate}
+  \textbf{Parameters:}
+  \begin{itemize}
+    \item $N$: Number of experts.
+    \item $\varepsilon \in (0,1)$: Penalty factor for incorrect experts.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Regret Bound for Weighted Majority}
+  \textbf{Lemma :} Denote by $M_t$ the number of mistakes the algorithm makes until time $t$, and by $M_t(i)$ the number of mistakes made by expert $i$ until time $t$. Then, for any expert $i \in [N]$ we have
+  \begin{align*}
+    M_T \leq 2(1+\varepsilon)M_T(i) + \frac{2\log N}{\varepsilon}
+  \end{align*}
+  \vspace{0.5 em}
+  \textbf{Corollary :} The regret of the WM algorithm is bounded by
+  \begin{align*}
+    M_T \leq 2M_T(i^*) + O(\sqrt{M_T(i^*) log N})
+  \end{align*}
+  where $i^*$ is the best expert.\\
+  \vspace{0.5 em}
+  \textbf{Proof:} Just let $\varepsilon^* = \sqrt{\frac{log N}{M_T(i^*)}}$.
+\end{frame}
+
+% \begin{frame}{Regret Bound Proof}
+%     \textbf{Proof:}
+%     \begin{itemize}
+%         \item Let $\phi_t = \sum_{i=1}^{N} w_i(t)$. Note that $\phi_{1} = N$.
+%         \item If the prediction is wrong, then $\phi_{t+1} \leq \frac{1}{2} \phi_t(1-\varepsilon) + \frac{1}{2} \phi_t$.
+%         \item Thus $\phi_{t} \leq \phi_1 (1-\varepsilon)^{M_t} = N(1-\varepsilon)^{M_t}$.
+%         \item By definition, $w_T(i) = (1-\varepsilon)^{M_T(i)}$. Also $w_t(i) \leq \phi_t$.
+%         \item $(1-\varepsilon)^{M_T(i)} \leq N(1-\varepsilon)^{M_T} \rightarrow M_T(i) log(1-\varepsilon) \leq log N + M_T log(1-\varepsilon)$.
+%         \item Using the fact that $-x-x^2 \leq log(1-x) \leq -x$ for $x \in (0,1)$, we get:
+%               \begin{align*}
+%                   -M_T(i) (\varepsilon + \varepsilon^2) \leq log N - M_T \frac{\varepsilon}{2} \rightarrow M_T \leq 2(1+\varepsilon)M_T(i) + \frac{2log N}{\varepsilon}
+%               \end{align*}
+%     \end{itemize}
+% \end{frame}
+
+
+% Slide 3: Randomized Weighted Majority
+\begin{frame}{Randomized Weighted Majority Algorithm}
+  \begin{itemize}
+    \item \textbf{Algorithm Steps:}
+          \begin{enumerate}
+            \item \textbf{Initialization:} Set $w_1(i) = 1$ for all experts.
+            \item \textbf{Probability Assignment:}
+                  \[
+                    P_t(i) = \frac{w_t(i)}{\sum_{j=1}^{N} w_t(j)}
+                  \]
+            \item \textbf{Expert Selection:} Choose expert $i$ with probability $P_i(t)$.
+            \item \textbf{Prediction and Update:} Make prediction based on selected expert and update weights as in Weighted Majority.
+          \end{enumerate}
+    \item \textbf{Better Regret Bound:} \\
+          \begin{align*}
+            \mathbb{E}[M_T] \leq (1+\varepsilon)M_T(i^*) + \frac{log N}{\varepsilon}
+          \end{align*}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{EXP3: Algorithm}
+  \begin{itemize}
+    \item \textbf{Setting:} Adversarial bandit problem, $N$ arms, losses $l_t(i)\in[0,1]$.
+    \item \textbf{Init:} $w_1(i)=1,\;\forall i$.
+    \item \textbf{For $t=1,\dots,T$:}
+      \begin{enumerate}
+        \item \emph{Probabilities:}
+          \[
+            p_t(i)=(1-\gamma)\frac{w_t(i)}{\sum_j w_t(j)}+\frac{\gamma}{N}
+          \]
+        \item \emph{Select} $I_t\sim p_t(\cdot)$, observe $l_t(I_t)$.
+        \item \emph{Estimate loss:}
+          \[
+            \hat l_t(i)=\frac{l_t(i)\,\mathbf{1}\{i=I_t\}}{p_t(i)}
+          \]
+        \item \emph{Update weights:}
+          \[
+            w_{t+1}(i)=w_t(i)\exp\bigl(-\eta\,\hat l_t(i)\bigr)
+          \]
+      \end{enumerate}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{EXP3: Regret \& Relation to RWM}
+  \begin{itemize}
+    \item \textbf{Expected Regret:}
+      \[
+        \mathbb{E}\!\Bigl[\sum_{t=1}^T l_t(I_t)\Bigr]
+        - \min_i\sum_{t=1}^T l_t(i)
+        = O\bigl(\sqrt{T N \ln N}\bigr).
+      \]
+    \item \textbf{Connection to RWM:}
+      \begin{itemize}
+        \item RWM assumes full feedback and uses
+          $P_t(i)=w_t(i)/\sum_j w_t(j)$.
+        \item EXP3 adds:
+          \begin{itemize}
+            \item \emph{Uniform exploration} ($\gamma/N$)
+            \item \emph{Importance‐weighted losses} $\hat l_t(i)$
+          \end{itemize}
+        \item As $\gamma\to0$ and if all $l_t(i)$ were observed, EXP3 reduces to RWM.
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+% % Slide 4: Randomized Weighted Majority Proof
+% \begin{frame}{RWM Regret Bound Proof}
+%     \textbf{Proof:}
+%     Let $\phi_t = \sum_{i=1}^{N} w_i(t)$ and $\tilde{m}_t$ be an indicator variable for the event that the prediction is wrong at time $t$ and $\tilde{m}_t(i) = 1$ if expert $i$ is wrong at time $t$.
+%     \begin{itemize}
+%         \item Note that
+%               \begin{align*}
+%                   \phi_{t+1} = \sum_{i=1}^{N} w_i(t)(1-\varepsilon\tilde{m}_t(i)) & = \phi_t (1-\varepsilon\sum_{i=1}^{N} P_t(i)\tilde{m}_t(i))                                           \\
+%                                                                                   & = \phi_t (1-\varepsilon \mathbb{E}[\tilde{m}_t]) \leq \phi_t e^{-\varepsilon \mathbb{E}[\tilde{m}_t]}
+%               \end{align*}
+%         \item With the same argument as in the WM proof, we get:
+%               \begin{align*}
+%                   (1-\varepsilon)^{M_T(i)}                        & \leq N e^{-\varepsilon M_T}                              \\
+%                   \rightarrow M_T(i) log(1-\varepsilon)           & \leq log N - \varepsilon \mathbb{E}[M_T]                 \\
+%                   \rightarrow - M_T (\varepsilon + \varepsilon^2) & \leq log N - \varepsilon \mathbb{E}[M_T]                 \\
+%                   \rightarrow \mathbb{E}[M_T]                     & \leq (1+\varepsilon)M_T(i^*) + \frac{log N}{\varepsilon}
+%               \end{align*}
+%     \end{itemize}
+% \end{frame}
+
+\subsection{Bandit Algorithms}
+\begin{frame}{Multi-Armed Bandits}
+  \begin{itemize}
+    \item \textbf{Problem:} Sequential decision-making under uncertainty to maximize total reward.
+    \item \textbf{Trade-off:}
+          \begin{itemize}
+            \item \emph{Explore}: try actions to learn their rewards
+            \item \emph{Exploit}: choose the best-known action
+          \end{itemize}
+    \item \textbf{Variants:}
+          \begin{itemize}
+            \item \emph{Stochastic}: fixed but unknown reward distributions
+            \item \emph{Contextual}: use side information (context) per round
+          \end{itemize}
+    \item \textbf{Use Cases:}
+          Recommendation engines, clinical trials, ad placement
+  \end{itemize}
+\end{frame}
+
+
+% % Slide 2: Bandit Algorithms in Online Advertising
+% \begin{frame}{Bandit Algorithms in Online Advertising}
+%     \begin{itemize}
+%         \item \textbf{Use Case:} Optimizing Ad Selection to Maximize CTR
+
+%         \item \textbf{How It Works:}
+%               \begin{itemize}
+%                   \item Each ad variant is considered an arm of the bandit.
+%                   \item The algorithm dynamically selects which ad to display based on past performance.
+%                   \item Balances exploration (trying new ads) with exploitation (showing top-performing ads).
+%               \end{itemize}
+
+%     \end{itemize}
+
+%     \vspace{0.5cm}
+%     \begin{figure}
+%         \centering
+%         \includegraphics[width=0.35\linewidth]{images/bandit_setting.jpg}
+%         \caption{Bandit Setting}
+%     \end{figure}
+% \end{frame}
+
+
+% Slide 3: Online Optimization and Bandit Algorithms
+\begin{frame}{Online Learning vs. Bandits}
+  \begin{columns}[T]
+    \begin{column}{0.6\textwidth}
+      \textbf{Online Learning}
+      \begin{itemize}
+        \item \emph{Full feedback}: loss for every action each round
+        \item \emph{Goal}: minimize regret vs.\ best fixed decision
+      \end{itemize}
+      \vspace{1em}
+      \textbf{Bandit Algorithms}
+      \begin{itemize}
+        \item \emph{Partial feedback}: only observe chosen action’s reward
+        \item \emph{Goal}: trade off exploration/exploitation to maximize reward
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.4\textwidth}
+      \begin{figure}
+        \centering
+        \includegraphics[width=\linewidth]{images/BanditVSOnline.png}
+        \caption{Comparison of Online Learning and Bandit Algorithms}
+      \end{figure}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+
+\begin{frame}{Exploration vs. Exploitation in Bandit Algorithms}
+  \begin{columns}[T,onlytextwidth]
+    \column{0.48\textwidth}
+    \textbf{Exploration}
+      \begin{itemize}
+        \item {Perturb expert predictions (e.g., randomised sampling)}
+        \item {Discover under-evaluated strategies and gather data}
+      \end{itemize}
+    \column{0.48\textwidth}
+    \textbf{Exploitation}
+      \begin{itemize}
+        \item {Follow-the-Leader: choose the top-performing expert}
+        \item { Maximise immediate reward based on past performance}
+      \end{itemize}
+  \end{columns}
+
+  \vspace{1em}
+  \begin{center}
+    \includegraphics[width=0.45\linewidth]{images/exploration_vs_exploitation.png}\\
+    {\small Figure: Trade-off between exploring new experts and exploiting the best expert.}
+  \end{center}
+\end{frame}
+
+\section{Our Contribution}
+
+\begin{frame}{Our Contributions}
+    \begin{enumerate}
+        \item \textbf{Problem Setting}
+        \begin{itemize}
+            \item A finite many-armed bandit problem.
+            \item A history-dependent adversarial strategy.
+        \end{itemize}
+
+        \item \textbf{Proposed Algorithm}
+        \item \textbf{Bounds \& Results}
+        \begin{itemize}
+            \item A sub-linear regret bound in the online learning setting.
+        \end{itemize}
+
+        \item \textbf{Future Directions}
+        \begin{itemize}
+            \item Extend our algorithm to the bandit feedback setting.
+            \item Establish a regret lower bound in the bandit setting.
+        \end{itemize}
+    \end{enumerate}
+\end{frame}
+
+\subsection{Problem Setting}
+\begin{frame}{Problem Setting}
+    We consider a \textit{finite many-armed} bandit problem with the following characteristics:
+
+    \begin{itemize}
+        \item \textbf{Action Space:} A set of $K$ arms, where $K \gg T$ (number of arms is much larger than the time horizon).
+        \item \textbf{Reward Structure:} The reward for each arm at each time step is bounded in $[0, 1]$.
+        \item \textbf{Learner's Objective:} Select a sequence of arms $\{a_t\}_{t=1}^T$ to maximize the cumulative reward.
+        % \[
+        %     \sum_{t=1}^T r_t(a_t)
+        % \]
+        % or equivalently, to minimize the regret compared to the best fixed arm in hindsight:
+        % \[
+        %     \text{Regret}_T = \max_{a \in [K]} \sum_{t=1}^T r_t(a) - \sum_{t=1}^T r_t(a_t)
+        % \]
+    \end{itemize}
+\end{frame}
+
+
+\subsection{Adversary’s Strategy}
+\begin{frame}{Adversary’s Strategy: Uniform Unseen Arm Rewards}
+    We now describe the behavior of the adversary in our setting:
+
+    \begin{itemize}
+        \item The adversary observes the learner’s history $\{a_1, \dots, a_{t-1}\}$ and acts adaptively.
+        \item All \textbf{unseen arms} (arms not yet selected in any previous round) are grouped into a single abstract arm.
+        \item The adversary then assigns a common reward $r_t^{\text{unseen}} \in [0,1]$ to all unseen arms uniformly.
+        \item This strategy dynamically shapes the reward structure, potentially misleading exploration:
+        \[
+            r_t(a) =
+            \begin{cases}
+                r_t^{\text{seen}}(a) & \text{if } a \in \{a_1, \dots, a_{t-1}\} \\
+                r_t^{\text{unseen}} & \text{otherwise}
+            \end{cases}
+        \]
+        \item This adversary models a pessimistic environment where unseen options are not guaranteed to be promising.
+    \end{itemize}
+\end{frame}
+
+
+\begin{frame}{A History-Dependent Bandit Interpretation}
+    This setting can be seen as a \textbf{nonstationary} bandit problem, where the number and identity of available arms evolve over time:
+    % based on the learner's past actions:
+
+    \begin{itemize}
+        \item Let $\mathcal{A}$ be the original set of $K$ arms.
+        \item Let $\mathcal{H}_t = \{a_1, a_2, \dots, a_{t-1}\}$ be the set of arms pulled before round $t$.
+        \item Define the available arm set at time $t$ as:
+        \[
+            \mathcal{A}_t = \mathcal{H}_t \cup \{u_t\}
+        \]
+        where $u_t$ is a virtual arm representing \emph{all yet-unseen arms}.
+
+        \item The key idea: At any round $t$, all arms not in $\mathcal{H}_t$ are indistinguishable to the learner, and are treated by the adversary as a single controllable entity.
+
+        \item Thus, the learner's decision space changes over time:
+        \[
+            \mathcal{A}_1 \subseteq \mathcal{A}_2 \subseteq \cdots \subseteq \mathcal{A}_T
+        \]
+    \end{itemize}
+\end{frame}
+
+
+\begin{frame}{A History-Dependent Bandit Interpretation}
+    This setting can be seen as a \textbf{nonstationary} bandit problem, where the number and identity of available arms evolve over time:
+    % based on the learner's past actions:
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.7\linewidth]{images/f1.png}
+        \caption{Multi-Armed Bandit}
+    \end{figure}
+\end{frame}
+
+% \begin{frame}{A History-Dependent Bandit Interpretation}
+%     This setting can be seen as a \textbf{nonstationary} bandit problem, where the number and identity of available arms evolve over time:
+%     % based on the learner's past actions:
+
+%     \begin{figure}
+%         \centering
+%         \includegraphics[width=0.7\linewidth]{images/f1.png}
+%         \caption{Multi-Armed Bandit}
+%     \end{figure}
+% \end{frame}
+
+
+\begin{frame}{A History-Dependent Bandit Interpretation}
+    This setting can be seen as a \textbf{nonstationary} bandit problem, where the number and identity of available arms evolve over time:
+
+    \begin{figure}
+        \centering
+        \begin{minipage}{0.48\linewidth}
+            \centering
+            \includegraphics[width=\linewidth]{images/f2.png}
+            \caption*{(a) Option 1}
+        \end{minipage}
+        \hfill
+        \begin{minipage}{0.48\linewidth}
+            \centering
+            \includegraphics[width=\linewidth]{images/f3.png}
+            \caption*{(b) Option 2}
+        \end{minipage}
+        \caption{Illustration of two existing action options at time step \( t \), representing dynamic arm sets in a history-dependent bandit setting.}
+    \end{figure}
+\end{frame}
+
+
+\begin{frame}{Regret Definition}
+
+\begin{itemize}
+    \item At each round \( t \in [T] \), the player observes \( h_{t-1} \) and chooses a policy \( P_t \in \mathbb{R}^{k_{t+1}} \).
+    
+    \item Then, the player selects action \( a_t = i \) with probability \( P_{t,i} \), for all \( i \in [k_{t+1}] \).
+\end{itemize}
+
+\vspace{2mm}
+
+\textbf{Again, Definition of \textcolor{red}{Revised}-Regret:}
+\[
+R_T(\pi, x) = \max_{i \in [k_{T+1}]} \sum_{t=1}^{T} x_{t,i} - \mathbb{E} \left[ \sum_{t=1}^{T} x_{t, a_t} \right]
+\]
+
+\end{frame} 
+
+\subsection{Player's Strategy}
+\begin{frame}{Player's Strategy}
+\begin{itemize}
+    \item We present a revised version of the EXP3 algorithm for the \textbf{online} setting.
+    
+    \item \textbf{Algorithm Steps:}
+    \begin{enumerate}
+        \item Initialize: \( S_{0,i} = 0 \quad \text{for all } i \) \hfill (Cumulative reward)
+        \vspace{3mm}
+        \item For each round \( t = 1 \) to \( T \):
+        \begin{itemize}
+            \item Compute action probability for known arms:
+            \[
+            p_{t,i} = \frac{\exp(\eta S_{t,i})}{\sum_{j=1}^{k_t} \exp(\eta S_{t,j}) + (T - k_t) \exp(\eta S_{t,k_{t+1}})} \quad \forall i \in [k_t]
+            \]
+            
+            \item Compute probability of exploring a new arm:
+            \[
+            p_{t,k_{t+1}} = \frac{(T - k_t) \exp(\eta S_{t,k_{t+1}})}{\sum_{j=1}^{k_t} \exp(\eta S_{t,j}) + (T - k_t) \exp(\eta S_{t,k_{t+1}})}
+            \]
+        \end{itemize}
+    \end{enumerate}
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}{Action Selection and Update Rules}
+\begin{enumerate}
+    \setcounter{enumi}{3}
+    \item Sample action \( A_t \sim P_t \), then observe rewards \( x_{t,1}, \dots, x_{t,k_t}, x_{t,k_{t+1}} \)
+
+    \item Update based on selected action:
+    \begin{itemize}
+        \item If \( A_t \in [k_t] \) (i.e., existing arm is selected):
+        \[
+        S_{t+1,i} = S_{t,i} + x_{t,i} \quad \forall i \in [k_t], \quad k_{t+1} = k_t
+        \]
+
+        \item Else (i.e., new arm is selected \( A_t = k_{t+1} \)):
+        \[
+        S_{t+1,i} = S_{t,i} + x_{t,i} \quad \forall i \in [k_{t+1}]
+        \]
+        \[
+        S_{t+1,k_{t+1}} = S_{t-1,k_{t+1}} + x_{t,k_{t+1}}, \quad k_{t+1} = k_t + 1
+        \]
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Notes:} The probability of selecting a new arm (exploration) decreases exponentially with accumulated reward.
+    % \item This allows discovering new arms when necessary while prioritizing well-performing ones.
+% \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Regret Bounds}
+In an adversarial setting, the EXP3 algorithm has
+\vspace{1cm}
+    \begin{itemize}
+        \item \textbf{Online Optimization:}
+        \[
+        \text{Regret} \leq \sqrt{n \log k}
+        \]
+        \item \textbf{Bandit Setting:} 
+        \[
+        \text{Regret} \leq \sqrt{n k \log k}
+        \]
+    \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Regret Bounds \& Future Work}
+Using our proposed algorithm, we will have:
+% \vspace{1cm}
+    \begin{itemize}
+        \item \textbf{Online Optimization:}
+        \[
+        \text{Regret} \leq \sqrt{n \log n} \quad \textcolor{blue}{(Sub-linear!)}
+        \]
+        \item \textbf{Bandit Setting:} \textcolor{red}{(Future work)}
+        \[
+        \text{Regret} \leq \sqrt{n k \log k} \quad \textcolor{red}{(???)}
+        \]
+        \item Establish a regret lower bound in the bandit setting.
+    \end{itemize}
+\end{frame}
+
+% Acknowledgment Slide
+\begin{frame}{Acknowledgment}
+    \begin{itemize}
+        \item Special thanks to Mr. \textbf{Sarzaeem} for his valuable suggestion regarding the setting.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Q \& A}
+    \textbf{Questions?} \\
+    Feel free to ask for clarifications, share feedback, or start a discussion.
+    \vfill
+    \begin{figure}
+        \includegraphics[width=0.5\textwidth]{images/qa.png}
+    \end{figure}
+\end{frame}
+
+
+
+
+% \section{Future Work}
+% \begin{frame}{Future Work}
+% % \[
+% % S_1 = \displaystyle\sum_{i=1}^{t-1} x_{1,i} \; S_2 = \displaystyle\sum_{i=1}^{t-1} x_{2,i} \; S_3 = \displaystyle\sum_{i=1}^{t-1} x_{3,i} \; S_T = \displaystyle\sum_{i=1}^{t-1} x_{T,i} \;
+% % \]
+
+%     \begin{enumerate}
+%         \item \textbf{Exploring while Exploiting:} I think the exploitation phase has some information that can be used to explore better.
+%         \item \textbf{Hyperparameter Tuning:} The parameters $\gamma$ can be tuned to improve the performance of the algorithm.
+%         \item \textbf{Game Theory:} The algorithm can be viewed as an Stackelberg game. Thus there is a possibility of using game theory.
+%         \item \textbf{Experiments:} The algorithm hasn't tested on real-world data. It would be interesting to see how it performs in practice.
+%         \item \textbf{Bound Tightening:} Investigate whether the current bounds of \( O(T^{3/4} \sqrt{\ln T}) \) against adaptive adversaries and \( O(T^{2/3}) \) against oblivious adversaries can be improved to \( O(\sqrt{T}) \).
+%     \end{enumerate}
+% \end{frame}
+
+\begin{frame}[allowframebreaks]{References}
+    \begin{thebibliography}{10}
+
+        \beamertemplatebookbibitems
+        % Books
+        \bibitem{lattimore2020bandit}
+        Tor Lattimore and Csaba Szepesv{\'a}ri.
+        \newblock \emph{Bandit Algorithms}.
+        \newblock Cambridge University Press, 2020.
+
+        \bibitem{hazan2016online}
+        Elad Hazan.
+        \newblock \emph{Introduction to Online Convex Optimization}.
+        \newblock Cambridge University Press, 2016.
+
+        \beamertemplatearticlebibitems
+        % Articles
+        \bibitem{mcmahan2004online}
+        H.~B. McMahan and A.~Blum.
+        \newblock \emph{Online Geometric Optimization in the Bandit Setting Against an Adaptive Adversary}.
+        \newblock In J.~Shawe-Taylor and Y.~Singer, editors, \emph{Learning Theory}, Springer Berlin Heidelberg, 2004, pp. 109--123.
+
+        \bibitem{auer2002nonstochastic}
+        P.~Auer, N.~Cesa-Bianchi, Y.~Freund, and R.~E.~Schapire.
+        \newblock \emph{The Nonstochastic Multiarmed Bandit Problem}.
+        \newblock \emph{SIAM Journal on Computing}, 32(1):48--77, 2002.
+
+        \bibitem{kalai2005efficient}
+        A.~Kalai and S.~Vempala.
+        \newblock \emph{Efficient algorithms for online decision problems}.
+        \newblock \emph{Journal of Computer and System Sciences}, 71(3):291--307, 2005.
+    \end{thebibliography}
+\end{frame}
+
+\end{document}
