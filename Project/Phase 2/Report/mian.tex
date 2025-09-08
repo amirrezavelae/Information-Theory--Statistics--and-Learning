@@ -1,0 +1,376 @@
+\documentclass[10pt,twocolumn]{article}
+\usepackage{fontspec}
+\setmainfont{TeX Gyre Termes}
+\usepackage{amsmath,amssymb}
+\DeclareMathOperator{\Var}{Var}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{multicol}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{microtype}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{hyperref}
+
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Reg}{\mathrm{Reg}}
+\newcommand{\KL}{\mathrm{KL}}
+\newcommand{\TV}{\mathrm{TV}}
+\newcommand{\Ber}{\mathrm{Ber}}
+\newcommand{\inp}[2]{\langle #1,#2\rangle}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\title{Adversarial Bandits with More Arms than Horizon\\
+\large Information Theory, Statistics, and Learning}
+\author{Amirreza Velae \and Amirabbas Afzali}
+\author{%
+  Amirreza Velae\thanks{Department of Electrical Engineering, Sharif University of Technology. E-mail:\ \texttt{amirreza.velae@ee.sharif.edu}}%
+  \and
+  Amirabbas Afzali\thanks{Department of Electrical Engineering, Sharif University of Technology. E-mail:\ \texttt{afzali@ee.sharif.ac.ir}}%
+}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+  We study adversarial multi–armed bandits in the \emph{high–arm} regime in which the number of actions $K$ can be comparable to or exceed the horizon $T$. For the canonical setting with bandit feedback and losses in $[0,1]$, we provide a concise information–theoretic proof of the minimax lower bound
+  \[
+    \Omega\!\big(\min\{\sqrt{KT},\,T\}\big)
+  \]
+  on the expected regret \citep{Auer2002Nonstochastic,BubeckCesaBianchi2012,LS20}. The argument is phrased as a binary hypothesis test between a null model (all arms $\mathrm{Ber}(1/2)$) and a single “good–arm” alternative ($\mathrm{Ber}(1/2+\varepsilon)$ on one arm), and combines the testing–total variation identity \citep{Tsybakov2009} with Pinsker’s and Bretagnolle–Huber inequalities \citep{CoverThomas2006,BretagnolleHuber1979} and a Kullback–Leibler (KL) divergence \emph{chain rule} tailored to bandit feedback \citep{Auer2002Nonstochastic,LS20,BubeckCesaBianchi2012}. This matches, up to logarithmic factors, the classical EXP3 upper bounds \citep{Auer2002Nonstochastic,BubeckCesaBianchi2012}. We then exploit structure in a history–dependent model where the adversary assigns a common reward to all yet–unseen arms. Pooling unseen arms into one abstract action reduces the effective comparator set to at most $T{+}1$ items, which yields an EXP3–style procedure with regret $O\!\big(\sqrt{T\log(T{+}1)}\big)$ under bandit feedback (cf.\ analyses for dynamic/sleeping action sets \citep{Kleinberg2010Sleeping}). The rates follow by balancing $\mathrm{KL}\sim (T/K)\varepsilon^2$ against regret $\sim \varepsilon T$, giving the inevitable choice $\varepsilon\asymp\sqrt{K/T}$ \citep{LS20}.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+\paragraph{Motivation.}
+Sequential decision problems with partial feedback (bandits) arise in high–throughput systems such as ad selection, recommendation, and online routing, where exploration must be traded against exploitation and the environment can be nonstationary or adversarial \citep{BubeckCesaBianchi2012,LS20}. In such applications the action set is often large (\,$K\gg T$\,), so guarantees must scale correctly in both $K$ and $T$ and avoid stochastic assumptions when they are unwarranted.
+
+In the adversarial $K$–armed bandit, tight rates are known up to logarithmic factors: the EXP3 family achieves $O(\sqrt{KT\log K})$, and the minimax lower bound is $\Omega(\min\{\sqrt{KT},T\})$; in particular, regret is linear in the extreme high–arm regime $K\ge T$ \citep{Auer2002Nonstochastic,BubeckCesaBianchi2012,LS20}. These results delineate what is achievable without additional structure.
+
+\paragraph{Contributions.}
+\begin{itemize}
+  \item \textbf{Model and scope.} We formalize the high–arm adversarial bandit with bandit feedback and an oblivious (loss–sequence) adversary for the lower bound, and a history–dependent but non–anticipating adversary for the structured result in which unseen arms are symmetric (related in spirit to sleeping/dynamic action models \citep{Kleinberg2010Sleeping}).
+  \item \textbf{Lower bound via hypothesis testing.} We give a compact proof of the canonical minimax lower bound
+        $\Omega\!\big(\min\{\sqrt{KT},T\}\big)$ by reducing regret to a binary test between a null and “one good arm” alternative. The proof uses the testing–TV equality \citep{Tsybakov2009}, Pinsker’s and Bretagnolle–Huber inequalities \citep{CoverThomas2006,BretagnolleHuber1979} to control testing error, and a bandit KL chain rule to evaluate the divergence \citep{Auer2002Nonstochastic,LS20,BubeckCesaBianchi2012}.
+  \item \textbf{Structured algorithm under pooled unseen arms.} When the adversary treats all unseen arms identically, pooling them into a single abstract arm shrinks the effective comparator set to $\le T{+}1$. Running an EXP3–style learner on the evolving action set—with average–weight initialization for newly spawned arms—yields $O(\sqrt{T\log(T{+}1)})$ regret under bandit feedback \citep[cf.][]{Auer2002Nonstochastic,Kleinberg2010Sleeping}.
+\end{itemize}
+
+
+\section{Background}
+\label{sec:background}
+
+\subsection{Multi-armed bandits}
+The (stochastic or adversarial) multi-armed bandit (MAB) formalizes sequential decision making with partial feedback: at each round $t$, a learner selects an arm $a_t\in[K]$ and only observes the loss (or reward) of that arm. The model dates to early work on sequential experimental design \citep{Robbins1952} and has since become a central abstraction for online optimization under uncertainty. In the stochastic case, each arm $i$ yields i.i.d.\ rewards from an unknown distribution; in the adversarial case, the loss vectors $(\ell_t(i))_{i=1}^K\in[0,1]^K$ may be chosen by an oblivious or adaptive adversary, with the learner observing only $\ell_t(a_t)$. Classical results establish near-matching minimax rates: EXP3 attains $O(\sqrt{KT\log K})$ expected regret in the adversarial setting, and $\Omega(\sqrt{KT})$ is unavoidable (up to constants/logs). \citep{Auer2002Nonstochastic,BubeckCesaBianchi2012,LS20}  :contentReference[oaicite:0]{index=0}
+
+\subsection{Online learning vs.\ bandits}
+Online learning (experts/online convex optimization) differs from bandits in the feedback model: full-information learners observe the entire loss vector $\ell_t(\cdot)$ each round, whereas bandit learners only see $\ell_t(a_t)$. Consequently, the best-possible regret scales as $O(\sqrt{T\log K})$ with full feedback but as $O(\sqrt{KT})$ with bandit feedback—precisely due to the information bottleneck. Standard references formalize these regimes and regret notions (external/pseudo-regret), as well as reductions connecting experts and bandits. \citep{CBL2006,ShalevShwartz2012,BubeckCesaBianchi2012}  :contentReference[oaicite:1]{index=1}
+
+\subsection{Contextual vs.\ canonical bandits}
+In \emph{canonical} (non-contextual) bandits, arm losses depend only on the arm and time. \emph{Contextual} bandits augment each round with side information $x_t$ and allow the loss of arm $i$ to depend on $(x_t,i)$, so the learner competes with a policy class mapping contexts to arms. Foundational algorithms include EXP4 (policy-based), Epoch-Greedy (supervised-oracle-based), and efficient linear models such as LinUCB; subsequent work gave statistically optimal, oracle-efficient approaches. \citep{LangfordZhang2007,LiChuLangfordSchapire2010,ChuLiReyzinSchapire2011,AgarwalEtAl2014,BubeckCesaBianchi2012}  :contentReference[oaicite:2]{index=2}
+
+
+\section{Problem Setup}
+\label{sec:setup}
+
+\subsection{High-arm regime and notation}
+We study a $K$-armed bandit with horizon $T$. At round $t=1,\dots,T$, the learner selects $a_t\in[K]$ and incurs loss $\ell_t(a_t)\in[0,1]$. Let $A_t$ denote the action random variable, and let $H_t=(A_1,\ell_1(A_1),\dots,A_t,\ell_t(A_t))$ be the history. We emphasize the \emph{high-arm} regime $K\gg T$ (often $K\ge T$), common in cold-start applications where the catalog of actions is large relative to the time budget. Unless stated otherwise, the adversary is \emph{oblivious} for the lower-bound analysis (fixing $(\ell_t(i))_{t,i}$ in advance) and \emph{non-anticipating} in our structured model (losses may depend on past but not on current randomization). The feedback is bandit: only $\ell_t(a_t)$ is observed. \citep{LS20,BubeckCesaBianchi2012,Auer2002Nonstochastic}  :contentReference[oaicite:3]{index=3}
+
+\subsection{Regret definitions}
+For a (possibly randomized) learner $\pi$, the \emph{adversarial (external) regret} against the best static arm in hindsight is
+\[
+  \Reg_T(\pi;\ell_{1:T}) = \sum_{t=1}^T \ell_t(A_t)\;-\;\min_{i\in[K]}\sum_{t=1}^T \ell_t(i).
+\]
+We will primarily analyze $\E[\Reg_T]$ where the expectation is over the learner’s randomness (and any randomness in the environment when we invoke Yao’s minimax principle). For context, in the stochastic MAB with arm means $(\mu_i)$, the standard regret is $R_T = T\mu^\star - \sum_{t=1}^T \E[r_t(A_t)]$, with $\mu^\star=\max_i \mu_i$ and $r_t=1-\ell_t$. \citep{CBL2006,BubeckCesaBianchi2012,LS20,Robbins1952}  :contentReference[oaicite:4]{index=4}
+
+
+\section{Adversary Model (History-Dependent)}
+\label{sec:adversary}
+
+We consider a \emph{non-anticipating, history-dependent} adversary. At time \(t\), the loss vector
+\(\ell_t \in [0,1]^K\) may depend on the prior interaction history \(H_{t-1}\), but not on the learner’s randomized action, which is revealed only after the adversary commits to \(\ell_t\) \citep{LS20}. This model properly captures dynamic, nonstationary environments while ensuring that regret remains well-defined.
+
+\subsection{Pooling unseen arms}
+
+Under the assumption that the adversary treats all \emph{unseen} arms identically, we can introduce an abstract arm \(U\) representing the entire unseen set. Formally, let
+\[
+  S_{t-1} = \{a_1, \ldots, a_{t-1}\}
+  \quad\text{and}\quad
+  \mathcal{A}_t = S_{t-1} \cup \{U\}.
+\]
+For each \(t\), losses are given by:
+\[
+  \ell_t(i) =
+  \begin{cases}
+    \ell_t^{\text{seen}}(i;H_{t-1}), & i \in S_{t-1},    \\
+    \ell_t^{\text{unseen}}(H_{t-1}), & i \notin S_{t-1}.
+  \end{cases}
+\]
+If the learner selects \(U\), a fresh unseen arm is spawned, its identity revealed along with its loss, and it enters \(S_t\). This reduction preserves loss sequences and guarantees that the effective action set size remains bounded by \(T+1\), enabling direct application of adversarial bandit algorithms (like EXP3) with standard regret analysis \citep{LS20}.
+
+
+\section{Adversary Model (History-Dependent)}
+\label{sec:adversary}
+
+We consider a \emph{non-anticipating, history-dependent} adversary. At time \(t\), the loss vector
+\(\ell_t \in [0,1]^K\) may depend on the prior interaction history \(H_{t-1}\), but not on the learner’s randomized action, which is revealed only after the adversary commits to \(\ell_t\) \citep{LS20}. This model properly captures dynamic, nonstationary environments while ensuring that regret remains well-defined.
+
+\subsection{Pooling unseen arms}
+
+Under the assumption that the adversary treats all \emph{unseen} arms identically, we can introduce an abstract arm \(U\) representing the entire unseen set. Formally, let
+\[
+  S_{t-1} = \{a_1, \ldots, a_{t-1}\}
+  \quad\text{and}\quad
+  \mathcal{A}_t = S_{t-1} \cup \{U\}.
+\]
+For each \(t\), losses are given by:
+\[
+  \ell_t(i) =
+  \begin{cases}
+    \ell_t^{\text{seen}}(i;H_{t-1}), & i \in S_{t-1},    \\
+    \ell_t^{\text{unseen}}(H_{t-1}), & i \notin S_{t-1}.
+  \end{cases}
+\]
+If the learner selects \(U\), a fresh unseen arm is spawned, its identity revealed along with its loss, and it enters \(S_t\). This reduction preserves loss sequences and guarantees that the effective action set size remains bounded by \(T+1\), enabling direct application of adversarial bandit algorithms (like EXP3) with standard regret analysis \citep{LS20}.
+
+\section{Information-Theoretic Tools}
+\label{sec:tools}
+
+\subsection{Yao’s minimax principle}
+
+Yao’s principle transforms a minimax lower bound for randomized algorithms into a lower bound for deterministic algorithms under a randomized input (hard distribution). Formally,
+\[
+  \inf_{\text{randomized alg}} \sup_{x} \mathbb{E}[L]
+  \;\ge\;
+  \sup_{\mu} \inf_{\text{deterministic alg}} \mathbb{E}_{x\sim\mu}[L].
+\]
+We apply this by selecting a distribution over loss sequences that is hard for any deterministic algorithm \citep[Chapter~14]{LS20}.
+
+\subsection{Testing and total variation}
+
+In binary hypothesis testing between distributions \(P\) and \(Q\), the optimal error probability equals \(1 - \mathrm{TV}(P,Q)\), where \(\mathrm{TV}\) is total variation distance. Importantly, for any \(f: \mathcal{H} \to [0,M]\),
+\[
+  |\mathbb{E}_P[f] - \mathbb{E}_Q[f]| \le M\,\mathrm{TV}(P,Q).
+\]
+We use this to bound differences in expectations of bounded statistics (e.g., arm pull counts) across two bandit environments.
+
+\subsection{Pinsker and Bretagnolle–Huber inequalities}
+
+Pinsker’s inequality provides:
+\[
+  \mathrm{TV}(P,Q) \le \sqrt{\tfrac12\,\mathrm{KL}(P\|Q)},
+\]
+which is tight for small divergences \citep{Canonne2022,PinskerInfoIneq}. We employ Pinsker to control expectation differences.
+
+\subsection{Bandit KL chain rule}
+
+When two environments differ only on arm \(i\), a fixed deterministic policy yields:
+\[
+  \mathrm{KL}(P \| Q)
+  =
+  \mathbb{E}_Q[N_i] \cdot d(p_i \| q_i),
+\]
+where \(N_i\) is the number of times arm \(i\) is pulled under \(Q\), and \(d\) is the single-round divergence (e.g., Bernoulli KL). This identity decomposes the divergence along the interaction and is crucial in relating KL to expected pulls \citep{LS20}.
+
+
+
+\section{Minimax Lower Bound}
+\label{sec:lowerbound}
+
+\begin{theorem}[Canonical adversarial lower bound]
+  For all $K\ge2$, $T\ge1$, any bandit algorithm (possibly randomized) suffers
+  \[
+    \E[\Reg_T]\;\ge\; c\,\min\{\sqrt{KT},\,T\}
+  \]
+  for a universal constant $c>0$.
+\end{theorem}
+
+\begin{proof}[Proof overview]
+  We argue by Yao’s minimax principle: it suffices to exhibit a distribution over loss sequences for which every deterministic learner suffers the stated expected regret. We use a binary hypothesis testing reduction between a \emph{null} environment and a \emph{single–good–arm} alternative, and control distinguishability via total variation and KL divergence (Pinsker or Bretagnolle–Huber). The bandit KL \emph{chain rule} translates indistinguishability into an upper bound on the expected number of pulls of the good arm, which, via a simple one–line regret identity, yields the lower bound after tuning a gap parameter $\varepsilon$.
+\end{proof}
+
+\subsection{Hard environment}
+\label{subsec:hard-env}
+Fix a gap parameter $\varepsilon\in(0,\tfrac14]$. Sample a hidden index $I\sim\mathrm{Unif}\{1,\dots,K\}$. At each round $t\in[T]$ and for each arm $j\in[K]$, generate an i.i.d.\ Bernoulli loss
+\[
+  X_{t,j}\ \sim\
+  \begin{cases}
+    \Ber(\tfrac12-\varepsilon), & j=I,     \\
+    \Ber(\tfrac12),             & j\neq I,
+  \end{cases}
+\]
+and let the learner observe only $X_{t,a_t}$ for its chosen arm $a_t$. Denote by $P_i$ the law of the full history $H_T$ conditional on $I=i$, and by $P_0$ the \emph{null} law under which all arms are $\Ber(\tfrac12)$ (so $I$ is irrelevant). This construction is standard in adversarial bandit lower bounds. \citep[Ch.~15]{LS20} \citep{Auer2002Nonstochastic}.
+
+\subsection{Regret identity}
+\label{subsec:regret-identity}
+Let $N_i=\sum_{t=1}^T \mathbf{1}\{a_t=i\}$ be the (random) number of pulls of arm $i$. Under $P_i$, the best fixed arm in hindsight is $i$ with expected cumulative loss $(\tfrac12-\varepsilon)T$, while the learner’s expected cumulative loss is $\tfrac12 T-\varepsilon\,\E_{P_i}[N_i]$. Therefore,
+\begin{equation}
+  \E_{P_i}[\Reg_T]\ \ge\ \varepsilon\Big(T-\E_{P_i}[N_i]\Big).
+  \label{eq:regret-identity}
+\end{equation}
+This is the fundamental “price of not identifying the good arm” inequality. \citep[Sec.~15.2]{LS20}.
+
+\subsection{Route A: Pinsker (expectations)}
+\label{subsec:routeA}
+\paragraph{Step A1 (TV controls bounded statistics).}
+For any $f:\mathcal{H}_T\!\to[0,M]$ and distributions $P,Q$ on histories,
+\[
+  \big|\E_P f-\E_Q f\big|\ \le\ M\,\mathrm{TV}(P,Q).
+\]
+Apply to $f=N_i\in[0,T]$ and $(P,Q)=(P_i,P_0)$:
+\begin{equation}
+  \E_{P_i}[N_i]\ \le\ \E_{P_0}[N_i]\ +\ T\,\mathrm{TV}(P_i,P_0).
+  \label{eq:TV-to-Ni}
+\end{equation}
+The identity $\E_{P_0}[N_i]=T/K$ holds by symmetry under $P_0$.
+
+\paragraph{Step A2 (Pinsker + bandit KL chain rule).}
+Pinsker’s inequality gives $\mathrm{TV}(P_i,P_0)\le \sqrt{\tfrac12\,\KL(P_0\|P_i)}$.
+By the \emph{bandit KL chain rule}, when environments differ only on arm $i$,
+\begin{align*}
+  \KL(P_0\|P_i) \ =\ \E_{P_0}[N_i]\cdot d\!\left(\tfrac12\;\middle\|\;\tfrac12-\varepsilon\right)\ = \\ \frac{T}{K}\cdot d\!\left(\tfrac12\;\middle\|\;\tfrac12-\varepsilon\right),
+\end{align*}
+
+where $d(\cdot\|\cdot)$ is the one–step (Bernoulli) KL divergence. For Bernoulli parameters $p,q\in(0,1)$,
+$d(p\|q)=p\log\!\tfrac{p}{q}+(1-p)\log\!\tfrac{1-p}{1-q}$, and in particular
+\[
+  d\!\left(\tfrac12\;\middle\|\;\tfrac12-\varepsilon\right)\ =\ \tfrac12\log\!\Big(\tfrac{1}{1-4\varepsilon^2}\Big).
+\]
+Combining with \eqref{eq:TV-to-Ni},
+\begin{equation}
+  \E_{P_i}[N_i]\ \le\ \frac{T}{K}\ +\ \frac{T}{2}\,\sqrt{\frac{T}{K}\cdot\big(-\log(1-4\varepsilon^2)\big)}.
+  \label{eq:Ni-upper}
+\end{equation}
+Now use $-\log(1-4\varepsilon^2)\le 8\varepsilon^2$ for $\varepsilon\le\tfrac14$ to obtain
+\[
+  \E_{P_i}[N_i]\ \le\ \frac{T}{K}\ +\ 2T\varepsilon\,\sqrt{\frac{T}{K}}.
+\]
+Insert this into \eqref{eq:regret-identity}:
+\begin{equation}
+  \E_{P_i}[\Reg_T]\ \ge\ \varepsilon T\Big(1-\frac{1}{K}\Big)\ -\ 2T\varepsilon^2\sqrt{\frac{T}{K}}.
+  \label{eq:regret-lb-eps}
+\end{equation}
+Finally, choose $\varepsilon = \min\{\tfrac14,\ c_0\sqrt{K/T}\}$ with a small numerical $c_0$ to balance the two terms (e.g., $c_0=\tfrac14$), yielding
+\[
+  \E_{P_i}[\Reg_T]\ \gtrsim\ \min\{\sqrt{KT},\,T\},
+\]
+and hence the minimax lower bound by Yao’s principle. \citep[Ch.~2 (Pinsker); Ch.~15 (KL chain rule, lower bound)]{CoverThomas2006,LS20}.
+
+\subsection{Constants and discussion}
+\label{subsec:constants-discussion}
+The constant $c$ can be traced through the inequalities above; classical treatments (and refined analyses) report absolute constants of this form and show tightness (up to logs) against EXP3’s $O(\sqrt{KT\log K})$ upper bound and against the trivial cap $T$. In the \emph{high-arm} regime $K\ge T$, the bound simplifies to $\E[\Reg_T]\ge cT$, i.e., linear regret is information-theoretically unavoidable without additional structure. See \citet{Auer2002Nonstochastic} for the original nonstochastic formulation and \citet{BubeckCesaBianchi2012,LS20} for modern expositions; see also \citet{GerchinovitzLattimore2016} for refined lower bounds matching several sharpened upper bounds (e.g., high-probability or variation-dependent forms).
+
+
+\section{Algorithm in the Structured Setting}
+\label{sec:algorithm}
+
+\subsection{Reduction lemma (pooling unseen $\Rightarrow$ at most $T{+}1$ comparators)}
+Let $S_{t-1}=\{a_1,\dots,a_{t-1}\}$ be the set of \emph{distinct} arms pulled before $t$, and assume the history-dependent, non-anticipating adversary assigns a common loss $\ell_t^{\mathrm{unseen}}(H_{t-1})$ to all arms not in $S_{t-1}$, while seen arms $i\in S_{t-1}$ receive $\ell_t^{\mathrm{seen}}(i;H_{t-1})$ (Sec.~\ref{sec:adversary}). Introduce a single abstract arm $U$ representing the entire set of unseen arms, and define
+\[
+  \mathcal{A}_t = S_{t-1}\cup\{U\}, \qquad |\mathcal{A}_t|\le t.
+\]
+
+\begin{lemma}[Reduction]
+  \label{lem:reduction}
+  For every original arm $j\in[K]$ there exists $b_j\in S_T\cup\{U\}$ such that
+  \[
+    \sum_{t=1}^T \ell_t(j)=\sum_{t=1}^T \tilde\ell_t(b_j),\qquad
+    \tilde\ell_t(b)=
+    \begin{cases}
+      \ell_t^{\mathrm{unseen}},  & t<\tau_b,    \\
+      \ell_t^{\mathrm{seen}}(b), & t\ge \tau_b,
+    \end{cases}
+  \]
+  where $\tau_b$ is the (random) first time $b$ appears in $S_t$ (and $\tau_U=\infty$). Consequently,
+  \[
+    \max_{j\in[K]}\sum_{t=1}^T \ell_t(j)
+    =
+    \max_{b\in S_T\cup\{U\}} \sum_{t=1}^T \tilde\ell_t(b),
+    \; |S_T\cup\{U\}|\le T{+}1.
+  \]
+\end{lemma}
+
+\begin{proof}[Proof sketch]
+  Fix an original arm $j$ and let $\tau_j$ be its reveal time (the first round it is pulled; $\tau_j=\infty$ if never pulled). Before $\tau_j$, $j$ is indistinguishable from any unseen arm by assumption, hence $\ell_t(j)=\ell_t^{\mathrm{unseen}}$ for $t<\tau_j$. At time $\tau_j$, the abstract arm $U$ \emph{spawns} the concrete arm $b_j$ that coincides with $j$ thereafter; thus for $t\ge \tau_j$, $\ell_t(j)=\ell_t^{\mathrm{seen}}(b_j)$. If $j$ is never pulled, take $b_j=U$. Summing over $t$ gives the pathwise identity and therefore the equality of benchmarks.
+\end{proof}
+
+\subsection{EXP3 on evolving action sets}
+We run an exponential-weights bandit algorithm (EXP3/EXP3-IX) on the evolving set $\mathcal{A}_t$ \citep{Auer2002Nonstochastic,BubeckCesaBianchi2012}. The only nonstandard ingredient is the \emph{average-weight initialization} for newly spawned arms, which preserves the potential $\log\!\sum_{a\in\mathcal{A}_t} w_t(a)$ so that the prior-cost term scales with $\log|\mathcal{A}_t|\le \log(T{+}1)$, exactly as in fixed-$K$ analyses of Hedge/EXP3 \citep{BubeckCesaBianchi2012}. For variance control we recommend the implicit-exploration (IX) estimator, which yields clean bounds and avoids explicit uniform mixing \citep{Neu2015IX,Kocak2014IX}.
+
+\begin{algorithm}[h]
+  \caption{EXP3 (or EXP3-IX) with pooled-unseen reduction}
+  \label{alg:exp3-pooled}
+  \begin{algorithmic}[1]
+    \State \textbf{Input:} horizon $T$, learning rate $\eta>0$, (optional) IX parameter $\gamma>0$
+    \State Initialize $S_0=\emptyset$, weights $w_1(a)=1$ for $a\in\{U\}$; set $\mathcal{A}_1=\{U\}$
+    \For{$t=1$ to $T$}
+    \State Form $\mathcal{A}_t=S_{t-1}\cup\{U\}$ and probabilities
+    \begin{align*}
+      p_t(a)= (1-\mu_t)\frac{w_t(a)}{\sum_{b\in\mathcal{A}_t} w_t(b)} + \mu_t\cdot \frac{1}{|\mathcal{A}_t|} \\
+      (\text{set }\mu_t=0\text{ if using IX}).
+    \end{align*}
+    \State Sample $A_t\sim p_t$, observe bandit loss $\ell_t(A_t)$.
+    \If{$A_t=U$} \Comment{spawn a concrete arm $a^{\text{new}}\notin S_{t-1}$}
+    \State $S_t\gets S_{t-1}\cup\{a^{\text{new}}\}$; define $\mathcal{A}_t\gets S_t\cup\{U\}$
+    \State \textit{Average-weight init:} $w_t(a^{\text{new}})\gets \frac{1}{|\mathcal{A}_t|}\sum_{b\in\mathcal{A}_t} w_t(b)$
+    \Else
+    \State $S_t\gets S_{t-1}$; $\mathcal{A}_{t+1}\gets S_t\cup\{U\}$
+    \EndIf
+    \State Form loss estimates for $a\in\mathcal{A}_t$:
+    \[
+      \widehat{\ell}_t(a)=
+      \begin{cases}
+        \dfrac{\ell_t(A_t)}{p_t(A_t)}\,\mathbf{1}\{a=A_t\},        & \text{(standard EXP3)}                 \\[6pt]
+        \dfrac{\ell_t(A_t)}{p_t(A_t)+\gamma}\,\mathbf{1}\{a=A_t\}, & \text{(EXP3-IX)}
+      \end{cases}
+    \]
+    \State Update weights for $a\in\mathcal{A}_t$: \quad $w_{t+1}(a)\gets w_t(a)\exp(-\eta\,\widehat{\ell}_t(a))$.
+    \EndFor
+  \end{algorithmic}
+\end{algorithm}
+
+\subsection{Regret guarantee}
+\begin{theorem}[Structured regret]
+  \label{thm:structured-regret}
+  Against a non-anticipating adaptive adversary with losses in $[0,1]$ satisfying the pooled-unseen symmetry, Algorithm~\ref{alg:exp3-pooled} enjoys
+  \[
+    \E[\Reg_T]=O\!\left(\sqrt{T\log(T{+}1)}\right),
+  \]
+  with the comparator being $\max_{b\in S_T\cup\{U\}}\sum_{t=1}^T \tilde\ell_t(b)$, which equals $\max_{j\in[K]}\sum_{t=1}^T \ell_t(j)$ by Lemma~\ref{lem:reduction}.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+  By Lemma~\ref{lem:reduction}, the benchmark set has size $M\le T{+}1$. The standard potential analysis of EXP3 with importance-weighted (or IX) estimates yields
+  \[
+    \E[\Reg_T]\;\le\;\frac{\log M}{\eta}\;+\;\eta\,\sum_{t=1}^T \E\!\left[\sum_{a\in\mathcal{A}_t}\frac{\Var(\widehat{\ell}_t(a)\mid H_{t-1})}{1}\right]^{1/2}\!,
+  \]
+  where the variance term is $O(1)$ per round for IX (or controlled via explicit mixing), and the prior term is $\log M\le \log(T{+}1)$ due to average-weight initialization when new arms arrive. Optimizing $\eta\simeq \sqrt{\log M/T}$ gives the stated bound. See \citet{Auer2002Nonstochastic,BubeckCesaBianchi2012} for EXP3 and \citet{Neu2015IX,Kocak2014IX} for implicit exploration; adding experts over time with potential-preserving initialization is a standard device in specialist/growing-expert settings \citep{MourtadaMaillard2017}.
+\end{proof}
+
+
+
+\section{Conclusion}
+\label{sec:conclusion}
+% recap, limitations, future work
+
+\bibliographystyle{abbrvnat}
+\bibliography{references}
+
+\end{document}

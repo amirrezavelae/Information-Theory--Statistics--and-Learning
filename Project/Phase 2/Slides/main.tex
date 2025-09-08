@@ -1,0 +1,820 @@
+\documentclass{beamer}
+\usepackage[numbers]{natbib}
+% Choose an aesthetic theme
+\usetheme{Madrid}
+% \usecolortheme{seagull} % Uncomment if you prefer to use the seagull color theme
+\usefonttheme{serif}
+
+% Packages for mathematical symbols and environments
+\usepackage{amsmath, amssymb, amsthm}
+% Define theorem and lemma environments
+\newtheorem{thm}{Theorem}
+\newtheorem{lem}[thm]{Lemma}
+\usepackage{colortbl} % For row coloring
+% Packages for algorithms
+\usepackage{algorithm}
+\usepackage{algpseudocode} % Using algpseudocode for better flexibility
+
+% Packages for figures
+\usepackage{graphicx}
+\usepackage{booktabs} % For better table formatting, if needed
+\usepackage{caption}  % For customizing captions
+
+% Define math operators used in slides
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Reg}{\mathrm{Reg}}
+\newcommand{\KL}{\mathrm{KL}}
+\newcommand{\Ber}{\mathrm{Bernoulli}}
+\newcommand{\TV}{\mathrm{TV}}
+\newcommand{\inp}[2]{\langle #1, #2\rangle}
+
+% Enable natbib for proper citation handling
+\usepackage[numbers]{natbib}
+
+% Title and Author Information
+\title{Adversarial Bandits with More Arms than Horizon}
+\subtitle{Information Theory, Statistics, and Learning Course Project}
+\author{Amirreza Velae \\ Amirabbas Afzali}
+\institute{Sharif University of Technology}
+\date{\today}
+
+\begin{document}
+
+% Slide 1: Title Slide
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% Slide 2: Outline
+\begin{frame}{Outline}
+    \tableofcontents
+\end{frame}
+\section{Introduction and Background}
+
+\begin{frame}{Real-Life Bandit Algorithm Use Case: Online Ad Placement}
+  \begin{columns}
+    \begin{column}{0.6\textwidth}
+      \begin{itemize}
+        \item \textbf{Context}: E-commerce platforms aim to maximize click-through rate (CTR).
+        \item \textbf{Solution}: Use Multi-Armed Bandit (MAB) algorithms like \textit{Thompson Sampling} to balance exploration and exploitation.
+        \item \textbf{Impact}: Achieve rapid adaptation and 5–10\% CTR uplift within hours.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.4\textwidth}
+      \begin{figure}
+        \centering
+        % Place your image here:
+        \includegraphics[width=\textwidth]{images/multi_armed_bandit.png}
+        \caption{CTR comparison: MAB vs. A/B test over time}
+      \end{figure}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\subsection{Bandit Algorithms}
+\begin{frame}{Multi-Armed Bandits}
+  \begin{itemize}
+    \item \textbf{Problem:} Sequential decision-making under uncertainty to maximize total reward.
+    \item \textbf{Trade-off:}
+          \begin{itemize}
+            \item \emph{Explore}: try actions to learn their rewards
+            \item \emph{Exploit}: choose the best-known action
+          \end{itemize}
+    \item \textbf{Variants:}
+          \begin{itemize}
+            \item \emph{Stochastic}: fixed but unknown reward distributions
+            \item \emph{Contextual}: use side information (context) per round
+          \end{itemize}
+    \item \textbf{Use Cases:}
+          Recommendation engines, clinical trials, ad placement
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Online Learning vs. Bandits}
+  \begin{columns}[T]
+    \begin{column}{0.6\textwidth}
+      \textbf{Online Learning}
+      \begin{itemize}
+        \item \emph{Full feedback}: loss for every action each round
+        \item \emph{Goal}: minimize regret vs.\ best fixed decision
+      \end{itemize}
+      \vspace{1em}
+      \textbf{Bandit Algorithms}
+      \begin{itemize}
+        \item \emph{Partial feedback}: only observe chosen action’s reward
+        \item \emph{Goal}: trade off exploration/exploitation to maximize reward
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.4\textwidth}
+      \begin{figure}
+        \centering
+        \includegraphics[width=\linewidth]{images/BanditVSOnline.png}
+        \caption{Comparison of Online Learning and Bandit Algorithms}
+      \end{figure}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+
+\begin{frame}{Exploration vs. Exploitation in Bandit Algorithms}
+  \begin{columns}[T,onlytextwidth]
+    \column{0.48\textwidth}
+    \textbf{Exploration}
+      \begin{itemize}
+        \item {Perturb expert predictions (e.g., randomised sampling)}
+        \item {Discover under-evaluated strategies and gather data}
+      \end{itemize}
+    \column{0.48\textwidth}
+    \textbf{Exploitation}
+      \begin{itemize}
+        \item {Follow-the-Leader: choose the top-performing expert}
+        \item { Maximise immediate reward based on past performance}
+      \end{itemize}
+  \end{columns}
+
+  \vspace{1em}
+  \begin{center}
+    \includegraphics[width=0.45\linewidth]{images/exploration_vs_exploitation.png}\\
+    {\small Figure: Trade-off between exploring new experts and exploiting the best expert.}
+  \end{center}
+\end{frame}
+
+
+\subsection{Contextual vs. Canonical Bandits}
+
+% --- Slide 1: Definition ---
+\begin{frame}{Contextual vs. Canonical Bandits}
+  \begin{columns}[T,onlytextwidth]
+    \column{0.55\textwidth}
+    \textbf{Canonical (Non-Contextual) Bandits}
+      \begin{itemize}
+        \item $K$ arms, each with unknown reward distribution
+        \item No side information (context) is available
+        \item Example: slot machines with different payout rates
+      \end{itemize}
+    \column{0.45\textwidth}
+    \textbf{Contextual Bandits}
+      \begin{itemize}
+        \item At each round, a context (feature vector) is observed
+        \item Reward depends on both chosen arm and context
+        \item Example: personalized ads based on user features
+      \end{itemize}
+  \end{columns}
+\end{frame}
+
+
+\begin{frame}{Contextual vs. Canonical Bandits}
+  \begin{center}
+    \includegraphics[width=0.85\linewidth]{images/cb.png}
+  \end{center}
+\end{frame}
+
+
+
+
+
+
+\subsection{Regret Definition}
+
+
+% --- Slide 1: Regret ---
+\begin{frame}{Definition: Regret}
+  \textbf{Definition}
+  \begin{itemize}
+    \item Regret measures the loss due to not always choosing the best arm.
+    \item For horizon $T$:
+    \[
+      R_T = T \mu^\ast - \sum_{t=1}^T \mathbb{E}[r_t]
+    \]
+    where $\mu^\ast$ is the expected reward of the optimal arm.
+  \end{itemize}
+
+  \vspace{1em}
+  \textbf{Interpretation}
+  \begin{itemize}
+    \item $R_T = 0$: learner always picks the best arm
+    \item Larger regret $\Rightarrow$ poorer learning
+    \item Goal: algorithms with sublinear regret, $R_T = o(T)$
+  \end{itemize}
+\end{frame}
+
+% --- Slide 2: Adversarial Regret ---
+\begin{frame}{Adversarial Regret}
+  \textbf{Definition}
+  \begin{itemize}
+    \item Rewards may be chosen by an adversary (non-stationary).
+    \item Regret is defined against the best fixed arm in hindsight:
+    \[
+      R_T = \max_{i \in [K]} \sum_{t=1}^T r_{t,i} - \sum_{t=1}^T r_{t,a_t}
+    \]
+  \end{itemize}
+
+  \vspace{1em}
+  \textbf{Interpretation}
+  \begin{itemize}
+    \item Compares learner to the best single arm after $T$ rounds
+    \item Algorithms like EXP3 achieve $R_T = O(\sqrt{T K \log K})$
+  \end{itemize}
+\end{frame}
+
+
+% --- Slide 1: GLM Contextual Bandit — Problem Setting ---
+\begin{frame}{Generalized Linear Contextual Bandit (GLM-CB)}
+  \textbf{Context \& Arms}
+  \begin{itemize}
+    \item At round $t=1,\ldots,T$, a context with per-arm features $\{x'_{t,a} \in \mathbb{R}^d : a \in [K]\}$ is observed.
+    \item The learner chooses an arm $a_t \in [K]$ and observes a reward $Y_t$.
+  \end{itemize}
+
+  \vspace{0.6em}
+  \textbf{Generalized Linear Model}
+  \begin{itemize}
+    \item Unknown parameter $\theta^\ast \in \mathbb{R}^d$ and a fixed, strictly increasing link $\mu:\mathbb{R}\to\mathbb{R}$.
+    \item \[
+      \mathbb{E}[\,Y_t \mid x'_{t,a_t}\,] \;=\; \mu\!\bigl((x'_{t,a_t})^\top \theta^\ast\bigr).
+      \]
+    \item Special cases: linear bandit $\mu(x)=x$; logistic bandit $\mu(x)=\frac{1}{1+e^{-x}}$.
+  \end{itemize}
+\end{frame}
+
+% --- Slide 2: Optimal Action \& Regret ---
+\begin{frame}{GLM-CB: Optimal Action and Regret}
+  \vspace{0.6em}
+  \textbf{Optimal Action}
+  \[
+    a_t^\ast \;=\; \arg\max_{a \in [K]} \; \mu\!\bigl((x'_{t,a})^\top \theta^\ast\bigr).
+  \]
+  \vspace{0.6em}
+  \textbf{Cumulative Regret of policy $\pi$}
+  \[
+    R_T(\pi) \;:=\; \sum_{t=1}^{T}
+      \Bigl(
+        \mu\!\bigl((x'_{t,a_t^\ast})^\top \theta^\ast\bigr)
+        - \mu\!\bigl((x'_{t,a_t})^\top \theta^\ast\bigr)
+      \Bigr).
+  \]
+\end{frame} 
+
+
+\begin{frame}{UCB-GLM Algorithm}
+  \begin{center}
+    \includegraphics[width=0.65\linewidth]{images/p1.png}
+  \end{center}
+  \begin{itemize}
+    \item For exploitation
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}{UCB-GLM Algorithm \cite{li2017provablyoptimalalgorithmsgeneralized}}
+  \begin{center}
+    \includegraphics[width=0.65\linewidth]{images/p2.png}
+  \end{center}
+  \begin{itemize}
+    \item For exploration
+\end{itemize}
+\end{frame}
+
+\begin{frame}{UCB-GLM: Regret Bound}
+    \begin{thm}[ ]
+  Fix $\delta\in(0,1)$. There exists a universal constant $C>0$ such that running UCB-GLM with
+  \[
+    \alpha \;=\; \frac{\sigma}{\kappa}\sqrt{\tfrac{d}{2}\log\!\big(1+\tfrac{2T}{d}\big)+\log\!\tfrac{1}{\delta}},
+    \qquad
+    \tau \;=\; C\,\sigma_0^{-2}\!\left(d+\log\!\tfrac{1}{\delta}\right)
+  \]
+  yields, with probability at least $1-2\delta$,
+  \[
+    R_T \;\le\; \tau \;+\; \frac{2L_\mu \sigma d}{\kappa}\;
+      \log\!\Big(\tfrac{T}{d\delta}\Big)\;\sqrt{T}.
+  \]
+\end{thm}
+  \vspace{0.6em}
+   $\rightarrow \tilde{O}(d\sqrt{T})$ regret, independent of the number of arms $K$.
+  
+\end{frame}
+
+
+\section{Our Contribution}
+
+\begin{frame}{Our Contributions}
+    \begin{enumerate}
+        \item \textbf{Problem Setting}
+        \begin{itemize}
+            \item A finite many-armed bandit problem.
+            \item A history-dependent adversarial strategy.
+        \end{itemize}
+    \item \textbf{Bounds \& Results}
+          \begin{itemize}
+            \item A sub-linear regret bound in the online learning setting.
+            \item A lower bound in the general Canonical High-Arm Regime ($K \ge T$) (Ignoring the structure of the problem).
+            \item An Algorithm with a sub-linear regret bound in the adversarial setting.
+          \end{itemize}
+
+    \end{enumerate}
+\end{frame}
+
+\subsection{Problem Setting}
+\begin{frame}{Problem Setting}
+    We consider a \textit{finite many-armed} bandit problem:
+
+    \begin{itemize}
+        \item \textbf{Action Space:} A set of $K$ arms, where $K \gg T$.
+        \item \textbf{Reward Structure:} The reward for each arm is bounded in $[0, 1]$.
+        \item \textbf{Learner's Objective:} Select a sequence of arms $\{a_t\}_{t=1}^T$ to maximize the cumulative reward.
+        % \[
+        %     \sum_{t=1}^T r_t(a_t)
+        % \]
+        % or equivalently, to minimize the regret compared to the best fixed arm in hindsight:
+        % \[
+        %     \text{Regret}_T = \max_{a \in [K]} \sum_{t=1}^T r_t(a) - \sum_{t=1}^T r_t(a_t)
+        % \]
+    \end{itemize}
+\end{frame}
+
+
+\subsection{Adversary’s Strategy}
+\begin{frame}{Adversary’s Strategy: Uniform Unseen Arm Rewards}
+    Adversary's behavior in our setting:
+
+    \begin{itemize}
+        \item The adversary observes the learner’s history $\{a_1, \dots, a_{t-1}\}$ and acts adaptively.
+        \item All \textbf{unseen arms} are grouped into a single abstract arm.
+        \item The adversary then assigns a common reward $r_t^{\text{unseen}} \in [0,1]$ to all unseen arms uniformly.
+        \item This strategy dynamically shapes the reward structure:
+        \[
+            r_t(a) =
+            \begin{cases}
+                r_t^{\text{seen}}(a) & \text{if } a \in \{a_1, \dots, a_{t-1}\} \\
+                r_t^{\text{unseen}} & \text{otherwise}
+            \end{cases}
+        \]
+    \end{itemize}
+\end{frame}
+
+
+% \begin{frame}{A History-Dependent Bandit Interpretation}
+%     This setting can be seen as a \textbf{nonstationary} bandit problem, where the number and identity of available arms evolve over time:
+%     % based on the learner's past actions:
+
+%     \begin{figure}
+%         \centering
+%         \includegraphics[width=0.7\linewidth]{images/f1.png}
+%         \caption{Multi-Armed Bandit}
+%     \end{figure}
+% \end{frame}
+
+
+
+
+\begin{frame}{Regret Definition}
+
+\begin{itemize}
+    \item At each round \( t \in [T] \), the player observes \( h_{t-1} \) and chooses a policy \( P_t \in \mathbb{R}^{k_{t+1}} \).
+    
+    \item Then, the player selects action \( a_t = i \) with probability \( P_{t,i} \), for all \( i \in [k_{t+1}] \).
+\end{itemize}
+
+\vspace{2mm}
+
+\textbf{Again, Definition of \textcolor{red}{Adversarial} Regret:}
+\[
+R_T(\pi, x) = \max_{i \in [k_{T+1}]} \sum_{t=1}^{T} x_{t,i} - \mathbb{E} \left[ \sum_{t=1}^{T} x_{t, a_t} \right]
+\]
+
+\end{frame} 
+
+
+
+% \subsection{Player's Strategy}
+% \begin{frame}{Player's Strategy}
+% \begin{itemize}
+%     \item We present a revised version of the EXP3 algorithm for the \textbf{online} setting.
+    
+%     \item \textbf{Algorithm Steps:}
+%     \begin{enumerate}
+%         \item Initialize: \( S_{0,i} = 0 \quad \text{for all } i \) \hfill (Cumulative reward)
+%         \vspace{3mm}
+%         \item For each round \( t = 1 \) to \( T \):
+%         \begin{itemize}
+%             \item Compute action probability for known arms:
+%             \[
+%             p_{t,i} = \frac{\exp(\eta S_{t,i})}{\sum_{j=1}^{k_t} \exp(\eta S_{t,j}) + (T - k_t) \exp(\eta S_{t,k_{t+1}})} \quad \forall i \in [k_t]
+%             \]
+            
+%             \item Compute probability of exploring a new arm:
+%             \[
+%             p_{t,k_{t+1}} = \frac{(T - k_t) \exp(\eta S_{t,k_{t+1}})}{\sum_{j=1}^{k_t} \exp(\eta S_{t,j}) + (T - k_t) \exp(\eta S_{t,k_{t+1}})}
+%             \]
+%         \end{itemize}
+%     \end{enumerate}
+% \end{itemize}
+% \end{frame}
+
+
+% \begin{frame}{Action Selection and Update Rules}
+% \begin{enumerate}
+%     \setcounter{enumi}{3}
+%     \item Sample action \( A_t \sim P_t \), then observe rewards \( x_{t,1}, \dots, x_{t,k_t}, x_{t,k_{t+1}} \)
+
+%     \item Update based on selected action:
+%     \begin{itemize}
+%         \item If \( A_t \in [k_t] \) (i.e., existing arm is selected):
+%         \[
+%         S_{t+1,i} = S_{t,i} + x_{t,i} \quad \forall i \in [k_t], \quad k_{t+1} = k_t
+%         \]
+
+%         \item Else (i.e., new arm is selected \( A_t = k_{t+1} \)):
+%         \[
+%         S_{t+1,i} = S_{t,i} + x_{t,i} \quad \forall i \in [k_{t+1}]
+%         \]
+%         \[
+%         S_{t+1,k_{t+1}} = S_{t-1,k_{t+1}} + x_{t,k_{t+1}}, \quad k_{t+1} = k_t + 1
+%         \]
+%     \end{itemize}
+% \end{enumerate}
+
+% \textbf{Notes:} The probability of selecting a new arm (exploration) decreases exponentially with accumulated reward.
+%     % \item This allows discovering new arms when necessary while prioritizing well-performing ones.
+% % \end{itemize}
+
+% \end{frame}
+
+
+% \begin{frame}{Regret Bounds}
+% In an adversarial setting, the EXP3 algorithm has
+% \vspace{1cm}
+%     \begin{itemize}
+%         \item \textbf{Online Optimization:}
+%         \[
+%         \text{Regret} \leq \sqrt{n \log k}
+%         \]
+%         \item \textbf{Bandit Setting:} 
+%         \[
+%         \text{Regret} \leq \sqrt{n k \log k}
+%         \]
+%     \end{itemize}
+% \end{frame}
+
+
+
+
+
+
+
+%% Kos Amat afzali
+\subsection{Lower Bound in General Setting}
+\begin{frame}{Goal \& roadmap}
+  \textbf{Claim (minimax lower bound).}
+  \[
+    \inf_{\text{alg}}\ \sup_{\ell_{1:T}\in[0,1]^{K\times T}}\ \E[\Reg_T]
+    \ \ge\ c\,\min\{\sqrt{KT},\,T\}
+  \]
+  for a universal constant $c>0$.
+
+  \vspace{0.6em}
+  \textbf{Proof roadmap.}
+  \begin{enumerate}\itemsep4pt
+    \item \textbf{Yao's principle:} analyze any \emph{deterministic} learner under a chosen input distribution \cite{Yao1977}.
+    \item \textbf{Hard environment:} one hidden “good” arm with advantage $\varepsilon$ (Bernoulli rewards).
+    \item \textbf{Testing step:} distinguish \emph{null} vs.\ “good arm $i$” via history; control via TV/Pinsker or Bretagnolle–Huber, and compute $\KL$ with the bandit KL chain rule.
+    \item \textbf{Tune $\varepsilon$:} set $\varepsilon\asymp \sqrt{K/T}$ to get $\E[\Reg_T]\gtrsim \sqrt{KT}$.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{Yao's minimax \& Testing--TV }
+  \begin{thm}[Yao \cite{Yao1977}]
+    For any loss functional $L(\mathsf{Alg},x)$,
+    \[
+      \max_{\mu}\ \min_{\text{det }\mathsf{A}} 
+      \ \mathbb{E}_{x\sim \mu}[L(\mathsf{A},x)]
+      \;=\;
+      \min_{\text{rand }\mathsf{Alg}}\ \max_{x}\ 
+      \mathbb{E}[L(\mathsf{Alg},x)].
+    \]
+  \end{thm}
+
+  \vspace{0.5em}
+
+  \begin{thm}[Optimal testing $\leftrightarrow$ total variation]
+    For distributions $P,Q$ with densities $p,q$,
+    \[
+      \alpha^\star(P,Q)=\min_{\phi}\{P[\phi=1]+Q[\phi=0]\}=1-\mathrm{TV}(P,Q),
+    \]
+    The optimal test is the likelihood-ratio rule $\phi^\star=\mathbf{1}\{p\ge q\}$ (Neyman–Pearson).
+  \end{thm}
+\end{frame}
+
+
+\begin{frame}{Pinsker \& Bretagnolle--Huber (at a glance)}
+  \small
+  \begin{thm}{Pinsker \cite{CT06}}
+    \[
+      \mathrm{TV}(P,Q)\ \le\ \sqrt{\tfrac12\,\KL(P\|Q)}.
+    \]
+    \emph{Use:} bound differences of expectations of bounded stats via TV.
+  \end{thm}
+
+  \begin{block}{Bernoulli KL plug-in}
+    For $p=\tfrac12$, $q=\tfrac12+\varepsilon$,
+    \[
+      d\Big(\tfrac12\Big\| \tfrac12+\varepsilon\Big)
+      = \tfrac12\log\frac{1}{1-4\varepsilon^2}
+      = 2\varepsilon^2 + O(\varepsilon^4).
+    \]
+    For $\varepsilon\le \tfrac14$,
+    \[
+      -\log(1-4\varepsilon^2)\ \le\ 16\ln\tfrac{4}{3}\ \varepsilon^2
+      \quad\Rightarrow\quad
+      d\Big(\tfrac12\Big\| \tfrac12+\varepsilon\Big)\ \le\ 8\ln\tfrac{4}{3}\ \varepsilon^2.
+    \]
+  \end{block}
+\end{frame}
+
+
+
+
+
+% ---------------------------------------------------------
+\begin{frame}{TV $\Rightarrow$ expectations; KL chain rule}
+  \begin{lem}[TV bound]
+    If $f:H_T \to[0,M]$, then \quad $|\E_P f-\E_Q f|\le M\,\mathrm{TV}(P,Q)$.
+  \end{lem}
+
+  \smallskip
+  Applied to $f=T_i(T)\in[0,T]$:
+  \[
+    \E_{P_i}T_i(T) \;\le\; \E_{P_0}T_i(T) \;+\; T\,\mathrm{TV}(P_i,P_0).
+  \]
+
+  \smallskip
+  \begin{lem}[KL decomposition \cite{LS20}]
+    If $P,Q$ differ only on arm $i$, then \quad
+    \[
+      \KL(P\|Q)\;=\;\E_Q[T_i(T)]\;D(P_i\|Q_i).
+    \]
+  \end{lem}
+
+  \smallskip
+  Under the symmetric null $Q$: \ $\E_Q[T_i(T)]=T/K$.
+\end{frame}
+
+
+
+\begin{frame}{Hard distribution}
+  \small
+  \textbf{Environment.} Sample a hidden good arm $I\sim\mathrm{Unif}\{1,\dots,K\}$. For each round $t$ and arm $j$,
+  \[
+    X_{tj}\sim
+    \begin{cases}
+      \Ber(\tfrac12+\varepsilon), & j=I,     \\
+      \Ber(\tfrac12),             & j\neq I,
+    \end{cases}
+    \quad\text{independently.}
+  \]
+  Let $P_i$ be the law given $I=i$, and $P_0$ the \emph{null} (all arms $\Ber(\tfrac12)$).
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.58\textwidth}
+      \medskip
+      \textbf{Regret identity.}
+      \[
+        \E_{P_i}[\Reg_T]\ \ge\ \varepsilon\big(T-\E_{P_i}[T_i(T)]\big).
+      \]
+
+      \medskip
+      \textbf{Symmetry (under $P_0$).}
+      \[
+        \E_{P_0}[T_i(T)]=T/K\quad\text{for all }i.
+      \]
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{images/lower_meme.png}
+      \scriptsize
+      One hidden “good” arm with gap $\varepsilon$; missing it drives regret.
+    \end{column}
+  \end{columns}
+\end{frame}
+
+
+% ---------------------------------------------------------
+\begin{frame}{TV $\Rightarrow$ Pinsker $\Rightarrow$ KL}
+  \textbf{TV bound} For $T_i(T)\in[0,T]$,
+  \[
+    \E_{P_i}[T_i(T)]\ \le\ \E_{P_0}[T_i(T)]\;+\;T\,\TV(P_i,P_0).
+  \]
+
+  \textbf{Pinsker + chain rule + symmetry}
+
+  \begin{align*}
+    \TV(P_i,P_0)\ \le\ \sqrt{\tfrac12\,\KL(P_0\|P_i)}
+     & =\ \sqrt{\tfrac12\,\E_{P_0}[T_i(T)]\;d(\tfrac12\|\tfrac12+\varepsilon)} \\
+     & =\ \sqrt{\tfrac12\,\tfrac{T}{K}\;d(\tfrac12\|\tfrac12+\varepsilon)}.
+  \end{align*}
+
+  \textbf{Conclusion.}
+  \[
+    \boxed{\ \E_{P_i}[T_i(T)]\ \le\ \tfrac{T}{K}\;+\;\tfrac{T}{2}\sqrt{\tfrac{T}{K}\cdot\big(-\log(1-4\varepsilon^2)\big)}\ }.
+  \]
+\end{frame}
+
+% ---------------------------------------------------------
+\begin{frame}{Putting it together (constants-ready)}
+  Using the regret identity,
+  \[
+    \E_{P_i}[\Reg_T]\ \ge\
+    \varepsilon \left(
+    T-\frac{T}{K}-\frac{T}{2}\sqrt{\frac{T}{K}\,\big(-\log(1-4\varepsilon^2)\big)}
+    \right).
+  \]
+  For $\varepsilon\le\tfrac14$ and $-\log(1-4\varepsilon^2)\le 8\varepsilon^2$,
+  \[
+    \E_{P_i}[\Reg_T]\ \ge\ \varepsilon T\Big(1-\tfrac1K\Big)\ -\ 2T\varepsilon^2\sqrt{\tfrac{T}{K}}.
+  \]
+  \textbf{Pick}\ \(
+  \displaystyle \varepsilon=\frac14\,\min\Big\{1,\sqrt{\tfrac{K}{T}}\Big\}
+  \)\ \(\Rightarrow\)\
+  \(
+  \E[\Reg_T]\ \ge\ c\,\min\{\sqrt{KT},\,T\}.
+  \)
+\end{frame}
+
+
+% ---------------------------------------------------------
+\begin{frame}{Canonical high-arm regime ($K \ge T$)}
+  \textbf{Regime.} More arms than time ($T \le K$).
+
+  \medskip
+  \textbf{Minimax picture (oblivious).}
+  \begin{align*}
+    \inf_{\text{alg}}\ \sup_{\ell_{1:T}\in[0,1]^{K\times T}} \E[\Reg_T]
+    \ \ge\ c\,\min\{\sqrt{KT},\,T\}
+    \\ \Rightarrow\quad
+    K \ge T:\ \ \E[\Reg_T]\ \ge\ c\,T.
+  \end{align*}
+  (Bartlett gives $c=1/18$.) \cite{BartlettAdvBandits}
+
+  \medskip
+  \textbf{Intuition.} With $T$ rounds and $K$ arms, most arms are unseen; a single better arm is rarely found
+  ($\E_{P_0}[T_i(T)]=T/K\ll 1$), so regret is the price of missing it.
+\end{frame}
+
+
+% ---------------------------------------------------------
+\begin{frame}{Upper bounds \& takeaways}
+  \textbf{Upper bound EXP3.}
+  \[
+    \E[\Reg_T]\ \le\ \min \big\{\,T,\ C\sqrt{KT\log K}\,\big\} \qquad \text{\cite{BubeckCesaBianchi2012}}.
+  \]
+  When $K \ge T$, the trivial cap $T$ dominates:
+  \[
+    \boxed{\ \E[\Reg_T]\ =\ \Theta(T)\ \text{ for } K \ge T. \ }
+  \]
+
+  \medskip
+  \textbf{Practical notes.}
+  \begin{itemize}
+    \item No algorithm beats $\Omega(T)$ worst-case without extra structure. \\
+      \begin{figure}
+        \centering
+        \includegraphics[width=0.2\linewidth]{images/meme.png}
+      \end{figure}
+    \item To improve: inject structure (contexts/experts), prune arms, or accept linear regret guarantees.
+  \end{itemize}
+
+\end{frame}
+
+\subsection{Key Trick \& General Idea to Use Structure}
+\begin{frame}{History-dependent bandit}
+    \small
+    \textbf{Pool unseen arms.} At round $t$:
+    \[
+    S_{t-1}=\{a_1,\dots,a_{t-1}\},\quad
+    \mathcal A_t = S_{t-1}\cup\{U\},\quad
+    |\mathcal A_t|\le t.
+    \]
+    Rewards:
+    \[
+    r_t(a)=
+    \begin{cases}
+    r_t^{\text{seen}}(a), & a\in S_{t-1},\\
+    r_t^{\text{unseen}}, & a=U.
+    \end{cases}
+    \]
+    If $U$ is played: spawn $a^{\text{new}}$, reveal $r_t^{\text{unseen}}$, set $S_t=S_{t-1}\cup\{a^{\text{new}}\}$.
+    
+    \medskip
+    \textbf{Learner.} Run EXP3 on $\mathcal A_t$; on spawn initialize
+    \[
+    w_t(a^{\text{new}})=\frac{1}{|\mathcal A_t|}\sum_{a\in\mathcal A_t}w_t(a).
+    \]
+\end{frame}
+
+
+
+\begin{frame}{A History-Dependent Bandit Interpretation}
+    This setting can be seen as a \textbf{nonstationary} bandit problem:
+    % based on the learner's past actions:
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.7\linewidth]{images/f1.png}
+        \caption{Multi-Armed Bandit}
+    \end{figure}
+\end{frame}
+
+
+\begin{frame}{A History-Dependent Bandit Interpretation}
+    This setting can be seen as a \textbf{nonstationary} bandit problem:
+
+    \begin{figure}
+        \centering
+        \begin{minipage}{0.48\linewidth}
+            \centering
+            \includegraphics[width=\linewidth]{images/f2.png}
+            \caption*{(a) Option 1}
+        \end{minipage}
+        \hfill
+        \begin{minipage}{0.48\linewidth}
+            \centering
+            \includegraphics[width=\linewidth]{images/f3.png}
+            \caption*{(b) Option 2}
+        \end{minipage}
+        \caption{Illustration of two existing action options at time step \( t \), representing dynamic arm sets in a history-dependent bandit setting.}
+    \end{figure}
+\end{frame}
+
+
+
+\begin{frame}{Reduction Lemma}
+  \small
+  \textbf{Lemma.}
+  For every original arm \(j\) there exists \(b_j\in S_T\cup\{U\}\) such that
+  \[
+    \sum_{t=1}^T r_t(j)\;=\;\sum_{t=1}^T \tilde r_t(b_j),
+    \quad
+    \tilde r_t(b)=
+    \begin{cases}
+      r_t^{\text{unseen}},  & t<\tau_b,    \\
+      r_t^{\text{seen}}(b), & t\ge \tau_b,
+    \end{cases}
+  \]
+  where \(\tau_b\) is the first time \(b\) appears.
+  Hence
+  \[
+    \max_{j\in[K]}\sum_{t=1}^T r_t(j)
+    \;=\;
+    \max_{b\in S_T\cup\{U\}} \sum_{t=1}^T \tilde r_t(b),
+    \qquad |S_T\cup\{U\}|\le T{+}1.
+  \]
+
+  \textit{Intuition:} Any original arm is “unseen” until its first pull, so its path equals “play \(U\) until it appears, then play it forever.”
+\end{frame}
+
+\begin{frame}{Consequence for Regret}
+  \small
+  \textbf{Apply EXP3 on the reduced set.}
+
+  \begin{itemize}
+    \item \emph{Prior:} average-weight init \(\Rightarrow\) penalty \(\log|\mathcal A_{\tau_b}|\le \log(T{+}1)\).
+    \item \emph{Variance:} use implicit (or explicit) exploration to control the \(1/p\) terms.
+  \end{itemize}
+
+  \medskip
+  \textbf{Result.} Against a non-anticipating adaptive adversary with rewards in \([0,1]\),
+  \[
+    \mathbb{E}[\mathrm{Regret}_T]\;=\;O \big(\sqrt{T\log(T{+}1)}\big).
+  \]
+
+
+  \medskip
+  \textbf{Takeaway.} The “pool unseen as one arm” reduction shrinks the effective comparator set to \(\le T{+}1\), yielding the usual \(\tilde O(\sqrt{T})\) regret with off-the-shelf adversarial bandit algorithms.
+\end{frame}
+
+
+
+% Acknowledgment Slide
+\begin{frame}{Acknowledgment}
+  \begin{itemize}
+    \item Special thanks to Mr. \textbf{Sarzaeem} for his valuable suggestion regarding the setting.
+    \item Thanks to Mr. \textbf{Zinati} for advice on this presentation.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Q \& A}
+  \textbf{Questions?} \\
+  Feel free to ask for clarifications, share feedback, or start a discussion.
+  \vfill
+  \begin{figure}
+    \includegraphics[width=0.5\textwidth]{images/qa.png}
+  \end{figure}
+\end{frame}
+
+
+\begin{frame}[allowframebreaks]{References}
+  \bibliographystyle{plainnat}
+  \bibliography{references}
+\end{frame}
+
+
+\end{document}
